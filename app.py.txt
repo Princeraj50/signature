@@ -1,0 +1,44 @@
+import os
+import cv2
+import supervision as sv
+from ultralytics import YOLO
+
+from dataset import download_dataset, DATASET_DIR
+
+# Local model info
+LOCAL_MODEL_DIR = "model"
+FILENAME = "yolov8s.pt"   # your local PyTorch model file
+
+if __name__ == "__main__":
+    # Ensure dataset exists
+    if not os.path.exists(DATASET_DIR):
+        download_dataset()
+
+    # Load YOLO model directly from local folder
+    model_path = os.path.join(LOCAL_MODEL_DIR, FILENAME)
+    model = YOLO(model_path)
+
+    # Collect test images
+    test_images = [
+        os.path.join(DATASET_DIR, "test", "images", d)
+        for d in os.listdir(os.path.join(DATASET_DIR, "test", "images"))
+        if d.endswith(".jpg")
+    ]
+
+    # Run inference on first test image
+    results = model(test_images[0])
+
+    # Load original image
+    image = cv2.imread(test_images[0])
+
+    # Convert detections to supervision format
+    detections = sv.Detections.from_ultralytics(results[0])
+
+    # Annotate boxes
+    box_annotator = sv.BoxAnnotator()
+    annotated_image = box_annotator.annotate(scene=image, detections=detections)
+
+    # Show annotated image
+    cv2.imshow("Detections", annotated_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
